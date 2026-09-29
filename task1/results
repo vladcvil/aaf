@@ -1,0 +1,236 @@
+1. CREATE
+1.1. Базове створення
+
+> create students (name, group);
+Parsed query structure:
+{
+  "type": "CREATE",
+  "table_name": "students",
+  "columns": [
+    {
+      "name": "name",
+      "indexed": false
+    },
+    {
+      "name": "group",
+      "indexed": false
+    }
+  ]
+}
+
+
+
+1.2. Створення з індексами INDEXED та багаторядковим вводом
+
+> CREATE cats (
+... id INDEXED,
+... name
+... INDEXED
+... , favourite_food
+... ); // mewmemwmewmew
+Parsed query structure:
+{
+  "type": "CREATE",
+  "table_name": "cats",
+  "columns": [
+    {
+      "name": "id",
+      "indexed": true
+    },
+    {
+      "name": "name",
+      "indexed": true
+    },
+    {
+      "name": "favourite_food",
+      "indexed": false
+    }
+  ]
+}
+
+
+2. INSERT
+2.1. INSERT з ключовим словом INTO:
+
+> insert into cats ("1", "Murzik", "Sausages");
+Parsed query structure:
+{
+  "type": "INSERT",
+  "table_name": "cats",
+  "values": [
+    "1",
+    "Murzik",
+    "Sausages"
+  ]
+}
+
+
+2.2. INSERT без INTO (опціональне за синтаксисом) і перенесення рядків:
+
+> INSERT cats (
+... "2",
+... "Pushok",
+... "Fish"
+... );
+Parsed query structure:
+{
+  "type": "INSERT",
+  "table_name": "cats",
+  "values": [
+    "2",
+    "Pushok",
+    "Fish"
+  ]
+}
+
+
+3. SELECT
+3.1. Базовий вибір без умов (вимога варіанту 2: після SELECT нічого не вказується):
+
+> SELECT FROM cats;
+Parsed query structure:
+{
+  "type": "SELECT",
+  "table_name": "cats",
+  "aggregations": [],
+  "where": null,
+  "group_by": null
+}
+
+
+3.2. Фільтрація з літералом у лапках (column < "value"):
+
+> select from cats where name < "Murzik";
+Parsed query structure:
+{
+  "type": "SELECT",
+  "table_name": "cats",
+  "aggregations": [],
+  "where": {
+    "left": "name",
+    "operator": "<",
+    "right": "Murzik",
+    "is_literal": true
+  },
+  "group_by": null
+}
+
+
+3.3. Фільтрація між двома стовпцями (column1 < column2):
+
+> SELECT FROM cats WHERE id < favourite_food;
+Parsed query structure:
+{
+  "type": "SELECT",
+  "table_name": "cats",
+  "aggregations": [],
+  "where": {
+    "left": "id",
+    "operator": "<",
+    "right": "favourite_food",
+    "is_literal": false
+  },
+  "group_by": null
+}
+
+
+3.4. Групування з агрегатними функціями (COUNT, MAX, LONGEST):
+
+> SELECT COUNT(id), MAX(favourite_food), LONGEST(name)
+... FROM cats
+... GROUP_BY name, id;
+Parsed query structure:
+{
+  "type": "SELECT",
+  "table_name": "cats",
+  "aggregations": [
+    {
+      "function": "COUNT",
+      "column": "id"
+    },
+    {
+      "function": "MAX",
+      "column": "favourite_food"
+    },
+    {
+      "function": "LONGEST",
+      "column": "name"
+    }
+  ],
+  "where": null,
+  "group_by": [
+    "name",
+    "id"
+  ]
+}
+
+
+3.5. Одночасно WHERE та GROUP_BY:
+
+> SELECT LONGEST(id)
+... FROM cats
+... WHERE name < "Murzik"
+... GROUP_BY favourite_food;
+Parsed query structure:
+{
+  "type": "SELECT",
+  "table_name": "cats",
+  "aggregations": [
+    {
+      "function": "LONGEST",
+      "column": "id"
+    }
+  ],
+  "where": {
+    "left": "name",
+    "operator": "<",
+    "right": "Murzik",
+    "is_literal": true
+  },
+  "group_by": [
+    "favourite_food"
+  ]
+}
+
+
+4. Тестування обробки помилок
+4.1. Спроба вказати поля в SELECT без наявності GROUP_BY:
+
+> SELECT name, id FROM cats;
+Error: Без GROUP_BY вираз після SELECT повинен бути порожнім: 'SELECT FROM ...'
+
+
+4.2. Некоректний оператор у WHERE:
+> SELECT FROM cats WHERE name > "Murzik";
+Error: Некоректний синтаксис команди SELECT
+
+
+4.3. Невідома агрегатна функція:
+
+> SELECT AVG(id) FROM cats GROUP_BY name;
+Error: Невідома або некоректна агрегатна функція: 'AVG(id)'
+
+
+4.4. Значення в INSERT без подвійних лапок:
+
+> INSERT INTO cats (123, "Murzik");
+Error: Значення має бути рядком у подвійних лапках: 123
+
+
+4.5. Невалідний ідентифікатор таблиці/колонки:
+
+> CREATE 1st_table (id);
+Error: Некоректний синтаксис команди CREATE
+
+
+4.6. Дублювання імені стовпця при створенні:
+
+> CREATE cats (name, age, name);
+Error: Дублювання імені стовпця: 'name'
+
+
+
+
+
+
+
